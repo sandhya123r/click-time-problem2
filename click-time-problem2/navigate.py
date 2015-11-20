@@ -4,6 +4,17 @@ import datetime
 import sys
 import requests.packages.urllib3
 requests.packages.urllib3.disable_warnings()
+from tabulate import tabulate
+
+YES_OPTIONS = ['yes', 'YES', 'Yes', 'y', 'Y', 'yo']
+NO_OPTIONS = ['no', 'NO', 'No', 'n', 'N']
+TRANSIT_MODES = {'b': 'bicycling', 'w': 'walking', 't': 'transit'}
+
+directions_key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
+#places_key = 'AIzaSyAAVTbGtg6q-4ioZF4gqM8pqXaLPxBILsM'
+places_key = 'AIzaSyDF1YIjBPwXLcrxCIKGa9otfMYf6B0B3z4'
+
+CLICKTIME_ADDRESS = '282 2nd St, San Francisco, CA 94105'
 
 class places :
 	def __init__(self,name,place_id,rating,price_level,time_taken):
@@ -12,18 +23,24 @@ class places :
 		self.rating=rating
 		self.price_level=price_level
 		self.time_taken=time_taken
-	
+
+	def __repr__(self):
+		return self.name
+		
+	def placeid_to_address(self):
+		return AddressLookup(self.place_id)
+		
+	def summary(self):
+		price_level = self.price_level
+		if self.price_level != 'N/A':
+			price_level = '$' * int(self.price_level)
+		return [self.name, str(self.rating), price_level, str(datetime.timedelta(seconds=self.time_taken))]
+		 
 
 	
 def Summary(origin,destination,mode,mode_type):
-	if mode_type=='w':
-		transport='walking'
-	if mode_type=='b' :
-		transport='bicycling'
-	if mode_type=='t'  :
-		transport='transit'
-	key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'	
-	url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode={2}&key={3}'.format(origin, destination,transport,key)
+	transport = TRANSIT_MODES[mode_type]
+	url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode={2}&key={3}'.format(origin, destination,transport,directions_key)
 	r=requests.get(url)
 	x=json.loads(r.text)
 	legs=x['routes'][0]['legs']
@@ -36,8 +53,32 @@ def Summary(origin,destination,mode,mode_type):
 			time=time+leg['duration']['value']
 		return time
 
-def AddressLookup(placeid,key):
-	url='https://maps.googleapis.com/maps/api/place/details/json?placeid={0}&key={1}'.format(placeid,key)
+
+def ShowAddress(location):
+	url='https://maps.googleapis.com/maps/api/place/autocomplete/json?input={0}&radius=500&key={1}'.format(location,places_key)
+	r=requests.get(url)
+	x=json.loads(r.text)
+	references=x['predictions']
+	search_result=1
+	places=[]
+	for i, ref in enumerate(references):
+		print i+1, ref['description']
+		places.append(ref['place_id'])
+	if not places:
+		print('Could not find a starting address on google maps')
+		sys.exit()
+
+	x = int(raw_input("Choose your starting point from the above search results. :- \n"))	
+	while x not in range(1, len(places) + 1):
+		x = int(raw_input("Please enter a valid number from the list \n"))
+		
+	#Reverse Address Lookup needs to be done because directions API won't accept special characters
+	return AddressLookup(places[x-1])
+
+	
+
+def AddressLookup(placeid):
+	url='https://maps.googleapis.com/maps/api/place/details/json?placeid={0}&key={1}'.format(placeid,places_key)
 	r=requests.get(url)
 	x=json.loads(r.text)
 	return x['result']['formatted_address']
@@ -45,93 +86,102 @@ def AddressLookup(placeid,key):
 
 def GetOptions(origin,destination,mode):
 	food='coffee and donuts near '+destination
-	key = 'AIzaSyAAVTbGtg6q-4ioZF4gqM8pqXaLPxBILsM'
-	print("Coffee and Donut options around you are : \n" )
-	url='https://maps.googleapis.com/maps/api/place/textsearch/json?query={0}&key={1}'.format(food,key)
+	if mode=='t':
+		bike_or_walk=raw_input("Do you have a bike? \n")
+	print("Searching for Coffee and Donut options around your destination.... : \n" )
+	url='https://maps.googleapis.com/maps/api/place/textsearch/json?query={0}&key={1}'.format(food,places_key)
 	r=requests.get(url)
 	x=json.loads(r.text)
 	results=x['results']
 	place_objects=[]
-	print "Displaying some results \n"
 	for i,r in enumerate(results):
 		#print r['name']
 		name=r['name']	
 		place_id=r['place_id']
 		rating = r.get('rating', 'N/A')
 		price_level=r.get('price_level','N/A')
-		new_destination=destination+"&waypoints="+AddressLookup(place_id,key)
-		time_taken=Summary(origin,new_destination,'time',mode)
+		if mode=='t':
+			new_destination=AddressLookup(place_id)
+			time_taken=Summary(origin,new_destination,'time',mode)
+			if bike_or_walk in YES_OPTIONS :
+				time_taken=time_taken+Summary(new_destination,destination,'time','b')
+			else :
+				time_taken=time_taken+Summary(new_destination,destination,'time','w')
+		else:
+			new_destination=destination+"&waypoints="+AddressLookup(place_id)
+			time_taken=Summary(origin,new_destination,'time',mode)
 		place_objects.append(places(name,place_id,rating,price_level,time_taken))
 		if (i+1)%10==0:
-			sorted(place_objects,key=lambda place:place.time_taken)
+			place_objects.sort(key=lambda place:place.time_taken)
+			rows=[]
 			for j,place_object in enumerate(place_objects):
-				print j+1," ",place_object.name," ",place_object.rating," ", place_object.price_level,"",str(datetime.timedelta(seconds=place_object.time_taken))
+				rows.append([str(j+1)] + place_object.summary())
+			columns=['No', 'Name', 'Rating', 'Price Level', 'Time']
+			print  tabulate(rows, headers=columns)
+		
 			more_options=raw_input("Do you want more options? Yes or No \n")
-			if more_options=='No' or more_options=='no':
-				final_option=raw_input("Which place would you like to go to ? \n")
+			if more_options in NO_OPTIONS:
+				final_option=int(raw_input("Which place would you like to go to ? \n"))
+				print place_objects[final_option-1]
+				waypoint=place_objects[final_option-1].placeid_to_address()
+				if mode=='t' :
+					if bike_or_walk in YES_OPTIONS:
+						NavigateMe(orgin,TRANSIT_MODE[mode],dest=waypoint)
+						NavigateMe(waypoint,TRANSIT_MODE['b'],dest=destination)
+					else :
+						NavigateMe(origin,TRANSIT_MODE[mode],dest=waypoint)
+						NavigateMe(waypoint,TRANSIT_MODE['w'],dest=destination)
+					break
+				else:	
+					NavigateMe(origin, TRANSIT_MODES[mode],waypoints=waypoint)
 				break
 			
-		
-	
 
-		
-	#print i+1," : ", r['name'],time_taken,"minutes" , "Rating ", rating, price_level
-	#places.append((i,(place_id,r['name'])))
-	#if ((i+1)%10==0) :
-	#	more_options=raw_input("Do you want more options? Yes or No \n")
-	#	if more_options=='No' or more_options=='no':
-	#		final_option=raw_input("Which place would you like to go to ? \n")
-	#		return 0;
-			
-	#maintain a list of donut and coffee shops using their place_ids
-		
-	
-
-def NavigateMe(origin,transport,waypoints):
-	destination = '282 2nd Street 4th floor, San Francisco, CA 94105'
-	key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
-	GetOptions(destination)
-	url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&mode={1}&destination={2}&key={3}'.format(origin, transport, destination, key)
+def NavigateMe(origin,transport,dest=None, waypoints=None):
+	if not dest:
+		dest = CLICKTIME_ADDRESS
+	if not waypoints:
+		url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&mode={1}&destination={2}&key={3}'.format(origin, transport, dest, directions_key)
+	else:
+		url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&mode={1}&destination={2}&key={3}&waypoints={4}'.format(origin, transport, dest, directions_key, waypoints)
 	r=requests.get(url)
 	x=json.loads(r.text)
+	with open('/home/sandhya/steps', 'w') as somefile:
+		somefile.write(json.dumps(x, indent=4))
 	legs=x['routes'][0]['legs']
-	steps=legs[0]['steps']
-	
-	#instructions=steps[0]['html_instructions']
-	#print steps[0].keys()
-	#print len(steps),steps[0].keys()
-	#print len(legs),legs[0].keys()
-	all_instructions = [x['html_instructions'] for x in steps]
-	print '\n'.join(all_instructions)
+	print origin
+	all_instructions = []
+	for leg in legs:
+		steps=leg['steps']
+		for step in steps:
+			if step['travel_mode'] != 'TRANSIT':
+				all_instructions.append(step['html_instructions'])
+			else:
+				msg = "Take {0} {1} {2}".format(step['transit_details']['line'].get('short_name', ''), step['html_instructions'], step['transit_details']['line'].get('name', ''))
+				all_instructions.append(msg)
+		print '\n'.join(all_instructions)
+		print "You have now reached ",leg['end_address'] 
 
 
 location=raw_input("Enter your location\n")
 location=location.replace(" ","")
-destination = '282 2nd Street 4th floor, San Francisco, CA 94105'
-print "Best Times Summary\n"
-print "Walking via ",Summary(location,destination,'summary','w')," : ",str(datetime.timedelta(seconds=Summary(location,destination,'time','w')))," \n"
-print "Bicycling via ",Summary(location,destination,'summary','b')," : ",str(datetime.timedelta(seconds=Summary(location,destination,'time','b')))," \n"
-print "Transit by Public transport ",Summary(location,destination,'summary','t')," : ",str(datetime.timedelta(seconds=Summary(location,destination,'time','t')))," \n"
+location=ShowAddress(location)
 
-option=raw_input("Which option do you prefer ? w for walking , b for bicycling , t for transit \n")
-opt_for_snacks=raw_input("Do you want to buy some coffee/donuts?y for yes,n for no \n")
-if opt_for_snacks=='y':
-	GetOptions(location,destination,option)
-	
-#if ans == 'y':
-#	transport='bicycling'
-#	NavigateMe(location,transport)
-#else :
-	#print "Walking from your location to office takes ",str(datetime.timedelta(seconds=CalculateDuration(location,'w')))," \n"
-	#print " Transit time with public transport takes ", str(datetime.timedelta(seconds=CalculateDuration(location,'t')))," \n"
-#	ans=raw_input("Do you want to walk or take public transport ? Enter w or t \n")
-#	if ans == 'w' :
-#		transport='walking'
-#		GetOptions(location,destination,ans)
-#		NavigateMe(location,transport)
-#	if ans=='t'   :
-#		transport='transit'
-#		GetOptions(location,destination,ans)
-#		NavigateMe(location,transport)
+print "Calculating best time summaries...."
+walking_summary ="Walking via {0} : {1}".format(Summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=Summary(location,CLICKTIME_ADDRESS,'time','w'))))
+biking_summary="Bicycling via {0} : {1} ".format(Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=Summary(location,CLICKTIME_ADDRESS,'time','b'))))
+transit_summary="Transit by Public transport {0} : {1} ".format(Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=Summary(location,CLICKTIME_ADDRESS,'time','t'))))
 
+print "Best Time Summaries:"
+print "\n".join([walking_summary,biking_summary,transit_summary])
 
+option=raw_input("How do you want to commute? (w)alking , (b)icycling , (t)ransit \n")
+while option not in TRANSIT_MODES.keys():
+	option = raw_input('Please enter a valid transport option \n')
+
+opt_for_snacks=raw_input("Do you want to buy some coffee/donuts? Yes/No\n")
+
+if opt_for_snacks in YES_OPTIONS:
+	GetOptions(location,CLICKTIME_ADDRESS,option)
+else :	
+	NavigateMe(location,TRANSIT_MODES[option],dest=CLICKTIME_ADDRESS)
