@@ -5,6 +5,7 @@ import sys
 import requests.packages.urllib3
 requests.packages.urllib3.disable_warnings()
 from tabulate import tabulate
+from HTMLParser import HTMLParser
 
 YES_OPTIONS = ['yes', 'YES', 'Yes', 'y', 'Y', 'yo']
 NO_OPTIONS = ['no', 'NO', 'No', 'n', 'N']
@@ -15,6 +16,25 @@ directions_key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
 places_key = 'AIzaSyDF1YIjBPwXLcrxCIKGa9otfMYf6B0B3z4'
 
 CLICKTIME_ADDRESS = '282 2nd St, San Francisco, CA 94105'
+
+
+# Attribution for MLStripper class
+# http://stackoverflow.com/questions/753052/strip-html-from-strings-in-python
+
+class MLStripper(HTMLParser):
+    def __init__(self):
+        self.reset()
+        self.fed = []
+    def handle_data(self, d):
+        self.fed.append(d)
+    def get_data(self):
+        return ' '.join(self.fed)
+
+def strip_tags(html):
+    s = MLStripper()
+    s.feed(html)
+    return s.get_data()
+
 
 class places :
 	def __init__(self,name,place_id,rating,price_level,time_taken):
@@ -155,7 +175,7 @@ def NavigateMe(origin,transport,dest=None, waypoints=None):
 		steps=leg['steps']
 		for step in steps:
 			if step['travel_mode'] != 'TRANSIT':
-				all_instructions.append(step['html_instructions'])
+				all_instructions.append(strip_tags(step['html_instructions']))
 			else:
 				msg = "Take {0} {1} {2}".format(step['transit_details']['line'].get('short_name', ''), step['html_instructions'], step['transit_details']['line'].get('name', ''))
 				all_instructions.append(msg)
