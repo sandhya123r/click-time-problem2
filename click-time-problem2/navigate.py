@@ -35,6 +35,9 @@ def strip_tags(html):
     return s.get_data()
 
 
+class NavigateException(Exception):
+	"""Class for exceptions raised in this module """
+
 class places :
     def __init__(self,name,place_id,rating,price_level,time_taken):
         self.name=name
@@ -197,11 +200,15 @@ g=GoToClickTime()
 
 print "Calculating best time summaries...."
 
-walking_summary ="Walking via {0} : {1}".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
-biking_summary="Bicycling via {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
-transit_summary="Transit by Public transport {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
+walking_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','w')
+biking_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','b')
+transit_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','t')
 
-if g.Summary(location,CLICKTIME_ADDRESS,'summary','t')!= -1 and g.Summary(location,CLICKTIME_ADDRESS,'summary','b')!= -1  :    
+walking_summary ="Walking via {0} : {1}".format(walking_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
+biking_summary="Bicycling via {0} : {1} ".format(biking_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
+transit_summary="Transit by Public transport {0} : {1} ".format(transit_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
+
+if transit_time!= -1 and biking_time!= -1 and walking_time!=-1   :    
 		print "Best Time Summaries:"
 		print "\n".join([walking_summary,biking_summary,transit_summary])
 		option=raw_input("How do you want to commute? (w)alking , (b)icycling , (t)ransit (f)lying \n")
