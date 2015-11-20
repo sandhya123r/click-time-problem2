@@ -6,17 +6,16 @@ import requests.packages.urllib3
 requests.packages.urllib3.disable_warnings()
 from tabulate import tabulate
 from HTMLParser import HTMLParser
+import unittest
 
 YES_OPTIONS = ['yes', 'YES', 'Yes', 'y', 'Y', 'yo', 'yES','YeS']
 NO_OPTIONS = ['no', 'NO', 'No', 'n', 'N','nO']
 TRANSIT_MODES = {'b': 'bicycling', 'w': 'walking', 't': 'transit','f':'flying'}
 
 directions_key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
-#places_key = 'AIzaSyAAVTbGtg6q-4ioZF4gqM8pqXaLPxBILsM'
 places_key = 'AIzaSyDF1YIjBPwXLcrxCIKGa9otfMYf6B0B3z4'
 
 CLICKTIME_ADDRESS = '282 2nd St, San Francisco, CA 94105'
-
 
 # Attribution for MLStripper class
 # http://stackoverflow.com/questions/753052/strip-html-from-strings-in-python
@@ -68,15 +67,19 @@ class GoToClickTime(object) :
          url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode={2}&key={3}'.format(origin,destination,transport,directions_key)
          r=requests.get(url)
          x=json.loads(r.text)
-         legs=x['routes'][0]['legs']
-         time=0
-         if mode=='summary':
-                return x['routes'][0]['summary']
-         if mode=='time' :
-                #return legs[0]['duration']['text']
-                for leg in legs:
-                        time=time+leg['duration']['value']
-                return time
+         
+         if not x['routes']  :
+         	return -1
+         else:
+         	legs=x['routes'][0]['legs']
+		time=0
+		if mode=='summary':
+		        return x['routes'][0]['summary']
+		if mode=='time' :
+		        #return legs[0]['duration']['text']
+		        for leg in legs:
+		                time=time+leg['duration']['value']
+		        return time
 
 
 def show_address(location):
@@ -173,7 +176,6 @@ def navigate_me(origin,transport,dest=None, waypoints=None):
     r=requests.get(url)
     x=json.loads(r.text)
     legs=x['routes'][0]['legs']
-    print origin
     all_instructions = []
     for leg in legs:
         steps=leg['steps']
@@ -199,22 +201,15 @@ walking_summary ="Walking via {0} : {1}".format(g.Summary(location,CLICKTIME_ADD
 biking_summary="Bicycling via {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
 transit_summary="Transit by Public transport {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
 
-transit_time=g.Summary(location,CLICKTIME_ADDRESS,'time','t')
-if transit_time > 86400 :
-    new_location="Airport San Francisco"
-    print "Airports near ClickTime office ....\n"
-    location=show_address(new_location)
-    navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
-    if navigate_now_or_later in NO_OPTIONS :
-        print "Goodbye! :)"
-        sys.exit()
-    
-print "Best Time Summaries:"
-print "\n".join([walking_summary,biking_summary,transit_summary])
-
-option=raw_input("How do you want to commute? (w)alking , (b)icycling , (t)ransit (f)lying \n")
-while option not in TRANSIT_MODES.keys():
-    option = raw_input('Please enter a valid transport option \n')
+if g.Summary(location,CLICKTIME_ADDRESS,'summary','t')!= -1 and g.Summary(location,CLICKTIME_ADDRESS,'summary','b')!= -1  :    
+		print "Best Time Summaries:"
+		print "\n".join([walking_summary,biking_summary,transit_summary])
+		option=raw_input("How do you want to commute? (w)alking , (b)icycling , (t)ransit (f)lying \n")
+		while option not in TRANSIT_MODES.keys():
+    			option = raw_input('Please enter a valid transport option \n')
+else :
+	print "You may want to take a flight ..... \n"
+	option='f'
 
 if option=='f' :
     new_location="Airport San Francisco"
@@ -224,8 +219,15 @@ if option=='f' :
     if navigate_now_or_later in NO_OPTIONS :
         print "Goodbye! :)"
         sys.exit()
-    
-    
+    if navigate_now_or_later in YES_OPTIONS :
+    	print "Best time summaries from the airport to  Click Time office....\n"
+    	walking_summary ="Walking via {0} : {1}".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
+	biking_summary="Bicycling via {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
+	transit_summary="Transit by Public transport {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
+	print "\n".join([walking_summary,biking_summary,transit_summary])
+    	option=raw_input("How do you want to commute from airport ? (w)alking , (b)icycling , (t)ransit \n")
+    	
+    	
 opt_for_snacks=raw_input("Do you want to buy some coffee/donuts? Yes/No\n")
 
 if opt_for_snacks in YES_OPTIONS:
