@@ -7,8 +7,8 @@ requests.packages.urllib3.disable_warnings()
 from tabulate import tabulate
 from HTMLParser import HTMLParser
 
-YES_OPTIONS = ['yes', 'YES', 'Yes', 'y', 'Y', 'yo']
-NO_OPTIONS = ['no', 'NO', 'No', 'n', 'N']
+YES_OPTIONS = ['yes', 'YES', 'Yes', 'y', 'Y', 'yo', 'yES','YeS']
+NO_OPTIONS = ['no', 'NO', 'No', 'n', 'N','nO']
 TRANSIT_MODES = {'b': 'bicycling', 'w': 'walking', 't': 'transit','f':'flying'}
 
 directions_key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
@@ -55,26 +55,32 @@ class places :
         if self.price_level != 'N/A':
             price_level = '$' * int(self.price_level)
         return [self.name, str(self.rating), price_level, str(datetime.timedelta(seconds=self.time_taken))]
-        
     
-def summary(origin,destination,mode,mode_type):
-    transport = TRANSIT_MODES[mode_type]
-    url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode={2}&key={3}'.format(origin, destination,transport,directions_key)
-    r=requests.get(url)
-    x=json.loads(r.text)
-    legs=x['routes'][0]['legs']
-    time=0
-    if mode=='summary':
-        return x['routes'][0]['summary']
-    if mode=='time' :
-        #return legs[0]['duration']['text']
-        for leg in legs:
-            time=time+leg['duration']['value']
-        return time
+class GoToClickTime(object) :
+    def __init__(self):
+        pass
+    def Summary(self,origin,destination,mode,mode_type):
+         mode_type=mode_type
+         origin=origin
+         destination=destination
+         mode=mode
+         transport = TRANSIT_MODES[mode_type]
+         url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode={2}&key={3}'.format(origin,destination,transport,directions_key)
+         r=requests.get(url)
+         x=json.loads(r.text)
+         legs=x['routes'][0]['legs']
+         time=0
+         if mode=='summary':
+                return x['routes'][0]['summary']
+         if mode=='time' :
+                #return legs[0]['duration']['text']
+                for leg in legs:
+                        time=time+leg['duration']['value']
+                return time
 
 
 def show_address(location):
-    url='https://maps.googleapis.com/maps/api/place/autocomplete/json?input={0}&radius=500&key={1}'.format(location,places_key)
+    url='https://maps.googleapis.com/maps/api/place/autocomplete/json?input={0}&radius=50000&key={1}'.format(location,places_key)
     r=requests.get(url)
     x=json.loads(r.text)
     references=x['predictions']
@@ -113,6 +119,7 @@ def get_options(origin,destination,mode):
     x=json.loads(r.text)
     results=x['results']
     place_objects=[]
+    option_obj=GoToClickTime()
     for i,r in enumerate(results):
         #print r['name']
         name=r['name']  
@@ -121,14 +128,14 @@ def get_options(origin,destination,mode):
         price_level=r.get('price_level','N/A')
         if mode=='t':
             new_destination=AddressLookup(place_id)
-            time_taken=summary(origin,new_destination,'time',mode)
+            time_taken=option_obj.Summary(origin,new_destination,'time',mode)
             if bike_or_walk in YES_OPTIONS :
-                time_taken=time_taken+summary(new_destination,destination,'time','b')
+                time_taken=time_taken+option_obj.Summary(new_destination,destination,'time','b')
             else :
-                time_taken=time_taken+summary(new_destination,destination,'time','w')
+                time_taken=time_taken+option_obj.Summary(new_destination,destination,'time','w')
         else:
             new_destination=destination+"&waypoints="+address_lookup(place_id)
-            time_taken=summary(origin,new_destination,'time',mode)
+            time_taken=option_obj.Summary(origin,new_destination,'time',mode)
         place_objects.append(places(name,place_id,rating,price_level,time_taken))
         if (i+1)%10==0:
             place_objects.sort(key=lambda place:place.time_taken)
@@ -184,22 +191,24 @@ location=raw_input("Enter your location\n")
 location=location.replace(" ","")
 location=show_address(location)
 
+g=GoToClickTime()
+
 print "Calculating best time summaries...."
 
-walking_summary ="Walking via {0} : {1}".format(summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=summary(location,CLICKTIME_ADDRESS,'time','w'))))
-biking_summary="Bicycling via {0} : {1} ".format(summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=summary(location,CLICKTIME_ADDRESS,'time','b'))))
-transit_summary="Transit by Public transport {0} : {1} ".format(summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=summary(location,CLICKTIME_ADDRESS,'time','t'))))
+walking_summary ="Walking via {0} : {1}".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
+biking_summary="Bicycling via {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
+transit_summary="Transit by Public transport {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
 
-transit_time=summary(location,CLICKTIME_ADDRESS,'time','t')
+transit_time=g.Summary(location,CLICKTIME_ADDRESS,'time','t')
 if transit_time > 86400 :
-	new_location="Airport San Francisco"
-	print "Airports near ClickTime office ....\n"
-	location=show_address(new_location)
-	navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
-	if navigate_now_or_later in NO_OPTIONS :
-		print "Goodbye! :)"
-		sys.exit()
-	
+    new_location="Airport San Francisco"
+    print "Airports near ClickTime office ....\n"
+    location=show_address(new_location)
+    navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
+    if navigate_now_or_later in NO_OPTIONS :
+        print "Goodbye! :)"
+        sys.exit()
+    
 print "Best Time Summaries:"
 print "\n".join([walking_summary,biking_summary,transit_summary])
 
@@ -208,15 +217,15 @@ while option not in TRANSIT_MODES.keys():
     option = raw_input('Please enter a valid transport option \n')
 
 if option=='f' :
-	new_location="Airport San Francisco"
-	print "Checking airports near ClickTime office ....\n"
-	location=show_address(new_location)
-	navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
-	if navigate_now_or_later in NO_OPTIONS :
-		print "Goodbye! :)"
-		sys.exit()
-	
-	
+    new_location="Airport San Francisco"
+    print "Checking airports near ClickTime office ....\n"
+    location=show_address(new_location)
+    navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
+    if navigate_now_or_later in NO_OPTIONS :
+        print "Goodbye! :)"
+        sys.exit()
+    
+    
 opt_for_snacks=raw_input("Do you want to buy some coffee/donuts? Yes/No\n")
 
 if opt_for_snacks in YES_OPTIONS:
