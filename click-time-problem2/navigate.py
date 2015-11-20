@@ -17,21 +17,25 @@ class places :
 	
 def Summary(origin,destination,mode,mode_type):
 	if mode_type=='w':
-		transport='Walking'
+		transport='walking'
 	if mode_type=='b' :
 		transport='bicycling'
 	if mode_type=='t'  :
-		transport='Transit'
+		transport='transit'
 	key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'	
-	url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode=bicycling&key={2}'.format(origin, destination,key)
+	url='https://maps.googleapis.com/maps/api/directions/json?origin={0}&destination={1}&mode={2}&key={3}'.format(origin, destination,transport,key)
 	r=requests.get(url)
 	x=json.loads(r.text)
 	legs=x['routes'][0]['legs']
-	steps=legs[0]['steps']
+	
+	time=0
 	if mode=='summary':
 		return x['routes'][0]['summary']
 	if mode=='time' :
-		time=x['routes'][0]['legs'][0]['duration']['value']
+		for leg in legs :
+			steps=leg['steps']
+			for step in steps:
+				time=time+step['duration']['value']
 		return time 
 
 
@@ -49,13 +53,11 @@ def GetOptions(origin,destination,mode):
 		#print r['name']
 		name=r['name']	
 		place_id=r['place_id']
+		print name,place_id 
 		rating = r.get('rating', 'N/A')
 		price_level=r.get('price_level','N/A')
-		foo='place_id:'+r['place_id']
-		time_taken_b=Summary(foo,destination,'time',mode)
-		time_taken_a=Summary(origin,'place_id:'+place_id,'time',mode)
-		print time_taken_b," ",time_taken_a," ",time_taken_a+time_taken_b
-		time_taken=time_taken_a+time_taken_b
+		new_destination=destination+"&waypoints=place_id:"+place_id
+		time_taken=Summary(origin,new_destination,'time',mode)
 		place_objects.append(places(name,place_id,rating,price_level,time_taken))
 		if (i+1)%10==0:
 			sorted(place_objects,key=lambda place:place.time_taken)
