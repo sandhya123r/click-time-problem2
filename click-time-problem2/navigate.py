@@ -27,17 +27,21 @@ def Summary(origin,destination,mode,mode_type):
 	r=requests.get(url)
 	x=json.loads(r.text)
 	legs=x['routes'][0]['legs']
-	
 	time=0
 	if mode=='summary':
 		return x['routes'][0]['summary']
 	if mode=='time' :
-		for leg in legs :
-			steps=leg['steps']
-			for step in steps:
-				time=time+step['duration']['value']
-		return time 
+		#return legs[0]['duration']['text']
+		for leg in legs:
+			time=time+leg['duration']['value']
+		return time
 
+def AddressLookup(placeid,key):
+	url='https://maps.googleapis.com/maps/api/place/details/json?placeid={0}&key={1}'.format(placeid,key)
+	r=requests.get(url)
+	x=json.loads(r.text)
+	return x['result']['formatted_address']
+	
 
 def GetOptions(origin,destination,mode):
 	food='coffee and donuts near '+destination
@@ -53,16 +57,15 @@ def GetOptions(origin,destination,mode):
 		#print r['name']
 		name=r['name']	
 		place_id=r['place_id']
-		print name,place_id 
 		rating = r.get('rating', 'N/A')
 		price_level=r.get('price_level','N/A')
-		new_destination=destination+"&waypoints=place_id:"+place_id
+		new_destination=destination+"&waypoints="+AddressLookup(place_id,key)
 		time_taken=Summary(origin,new_destination,'time',mode)
 		place_objects.append(places(name,place_id,rating,price_level,time_taken))
 		if (i+1)%10==0:
 			sorted(place_objects,key=lambda place:place.time_taken)
 			for j,place_object in enumerate(place_objects):
-				print j+1," ",place_object.name," ",place_object.rating," ", place_object.price_level,"",place_object.time_taken,"seconds"
+				print j+1," ",place_object.name," ",place_object.rating," ", place_object.price_level,"",str(datetime.timedelta(seconds=place_object.time_taken))
 			more_options=raw_input("Do you want more options? Yes or No \n")
 			if more_options=='No' or more_options=='no':
 				final_option=raw_input("Which place would you like to go to ? \n")
