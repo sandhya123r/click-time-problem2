@@ -1,7 +1,7 @@
 # click-time-problem2
 Readme to Guide me from A to B
 
-![alt tag](https://raw.github.com/sandhya123r/click-time-problem2/click-time-problem2/to/home/sandhya/Pictures/Biking_Snapshot.png)
+![alt text](home/sandhya/Pictures/Biking_Snapshot.png "Biking Navigation")
 
 The gitignore file lists files to ignore
 
