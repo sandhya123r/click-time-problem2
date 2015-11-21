@@ -192,52 +192,57 @@ def navigate_me(origin,transport,dest=None, waypoints=None):
         print "You have now reached ",leg['end_address'] 
 
 
-location=raw_input("Enter your location\n")
-location=location.replace(" ","")
-location=show_address(location)
+def main():
+	location=raw_input("Enter your location\n")
+	location=location.replace(" ","")
+	location=show_address(location)
 
-g=GoToClickTime()
+	g=GoToClickTime()
 
-print "Calculating best time summaries...."
+	print "Calculating best time summaries...."
 
-walking_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','w')
-biking_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','b')
-transit_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','t')
+	walking_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','w')
+	biking_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','b')
+	transit_time=g.Summary(location,CLICKTIME_ADDRESS,'summary','t')
 
-walking_summary ="Walking via {0} : {1}".format(walking_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
-biking_summary="Bicycling via {0} : {1} ".format(biking_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
-transit_summary="Transit by Public transport {0} : {1} ".format(transit_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
+	walking_summary ="Walking via {0} : {1}".format(walking_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
+	biking_summary="Bicycling via {0} : {1} ".format(biking_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
+	transit_summary="Transit by Public transport {0} : {1} ".format(transit_time,str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
 
-if transit_time!= -1 and biking_time!= -1 and walking_time!=-1   :    
-		print "Best Time Summaries:"
+	if transit_time!= -1 and biking_time!= -1 and walking_time!=-1   :    
+			print "Best Time Summaries:"
+			print "\n".join([walking_summary,biking_summary,transit_summary])
+			option=raw_input("How do you want to commute? (w)alking , (b)icycling , (t)ransit (f)lying \n")
+			while option not in TRANSIT_MODES.keys():
+	    			option = raw_input('Please enter a valid transport option \n')
+	else :
+		print "You may want to take a flight ..... \n"
+		option='f'
+
+	if option=='f' :
+	    new_location="Airport San Francisco"
+	    print "Checking airports near ClickTime office ....\n"
+	    location=show_address(new_location)
+	    navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
+	    if navigate_now_or_later in NO_OPTIONS :
+		print "Goodbye! :)"
+		sys.exit()
+	    if navigate_now_or_later in YES_OPTIONS :
+	    	print "Best time summaries from the airport to  Click Time office....\n"
+	    	walking_summary ="Walking via {0} : {1}".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
+		biking_summary="Bicycling via {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
+		transit_summary="Transit by Public transport {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
 		print "\n".join([walking_summary,biking_summary,transit_summary])
-		option=raw_input("How do you want to commute? (w)alking , (b)icycling , (t)ransit (f)lying \n")
-		while option not in TRANSIT_MODES.keys():
-    			option = raw_input('Please enter a valid transport option \n')
-else :
-	print "You may want to take a flight ..... \n"
-	option='f'
+	    	option=raw_input("How do you want to commute from airport ? (w)alking , (b)icycling , (t)ransit \n")
+	    	
+	    	
+	opt_for_snacks=raw_input("Do you want to buy some coffee/donuts? Yes/No\n")
 
-if option=='f' :
-    new_location="Airport San Francisco"
-    print "Checking airports near ClickTime office ....\n"
-    location=show_address(new_location)
-    navigate_now_or_later=raw_input("Do you want steps of navigation from airport now? Yes/No \n")
-    if navigate_now_or_later in NO_OPTIONS :
-        print "Goodbye! :)"
-        sys.exit()
-    if navigate_now_or_later in YES_OPTIONS :
-    	print "Best time summaries from the airport to  Click Time office....\n"
-    	walking_summary ="Walking via {0} : {1}".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','w'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','w'))))
-	biking_summary="Bicycling via {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','b'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','b'))))
-	transit_summary="Transit by Public transport {0} : {1} ".format(g.Summary(location,CLICKTIME_ADDRESS,'summary','t'),str(datetime.timedelta(seconds=g.Summary(location,CLICKTIME_ADDRESS,'time','t'))))
-	print "\n".join([walking_summary,biking_summary,transit_summary])
-    	option=raw_input("How do you want to commute from airport ? (w)alking , (b)icycling , (t)ransit \n")
-    	
-    	
-opt_for_snacks=raw_input("Do you want to buy some coffee/donuts? Yes/No\n")
-
-if opt_for_snacks in YES_OPTIONS:
-    get_options(location,CLICKTIME_ADDRESS,option)
-else :  
-    navigate_me(location,TRANSIT_MODES[option],dest=CLICKTIME_ADDRESS)
+	if opt_for_snacks in YES_OPTIONS:
+	    get_options(location,CLICKTIME_ADDRESS,option)
+	else :  
+	    navigate_me(location,TRANSIT_MODES[option],dest=CLICKTIME_ADDRESS)
+	    
+	    
+if __name__ == '__main__':
+	main()
