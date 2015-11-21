@@ -116,9 +116,10 @@ def address_lookup(placeid):
     
 
 def get_options(origin,destination,mode):
+    destination=CLICKTIME_ADDRESS
     food='coffee and donuts near '+destination
     if mode=='t':
-        bike_or_walk=raw_input("Do you have a bike? \n")
+        bike_or_walk=raw_input("Do you have a bike? Yes/No\n")
     print("Searching for Coffee and Donut options around your destination.... : \n" )
     url='https://maps.googleapis.com/maps/api/place/textsearch/json?query={0}&key={1}'.format(food,places_key)
     r=requests.get(url)
@@ -133,7 +134,7 @@ def get_options(origin,destination,mode):
         rating = r.get('rating', 'N/A')
         price_level=r.get('price_level','N/A')
         if mode=='t':
-            new_destination=AddressLookup(place_id)
+            new_destination=address_lookup(place_id)
             time_taken=option_obj.Summary(origin,new_destination,'time',mode)
             if bike_or_walk in YES_OPTIONS :
                 time_taken=time_taken+option_obj.Summary(new_destination,destination,'time','b')
@@ -158,11 +159,11 @@ def get_options(origin,destination,mode):
                 waypoint=place_objects[final_option-1].placeid_to_address()
                 if mode=='t' :
                     if bike_or_walk in YES_OPTIONS:
-                        navigate_me(orgin,TRANSIT_MODE[mode],dest=waypoint)
-                        navigate_me(waypoint,TRANSIT_MODE['b'],dest=destination)
+                        navigate_me(origin,TRANSIT_MODES[mode],dest=waypoint)
+                        navigate_me(waypoint,TRANSIT_MODES['b'],dest=destination)
                     else :
-                        navigate_me(origin,TRANSIT_MODE[mode],dest=waypoint)
-                        navigate_me(waypoint,TRANSIT_MODE['w'],dest=destination)
+                        navigate_me(origin,TRANSIT_MODES[mode],dest=waypoint)
+                        navigate_me(waypoint,TRANSIT_MODES['w'],dest=destination)
                     break
                 else:   
                     navigate_me(origin, TRANSIT_MODES[mode],waypoints=waypoint)
