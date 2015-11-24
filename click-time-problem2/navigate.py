@@ -12,8 +12,11 @@ YES_OPTIONS = ['yes', 'YES', 'Yes', 'y', 'Y', 'yo', 'yES','YeS']
 NO_OPTIONS = ['no', 'NO', 'No', 'n', 'N','nO']
 TRANSIT_MODES = {'b': 'bicycling', 'w': 'walking', 't': 'transit','f':'flying'}
 
-directions_key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
-places_key = 'AIzaSyDF1YIjBPwXLcrxCIKGa9otfMYf6B0B3z4'
+#directions_key = 'AIzaSyCl_7phc2HQOSimmScmS09NW_A9dlQklqw'
+#places_key = 'AIzaSyDF1YIjBPwXLcrxCIKGa9otfMYf6B0B3z4'
+
+directions_key = 'AIzaSyC5EBT95BFn_AfLj5kNDHyeyn6VnVazmus'
+places_key = 'AIzaSyCBXi_thAe29Mg9e3JJrVJCB6Hm2TKp3rg'
 
 CLICKTIME_ADDRESS = '282 2nd St, San Francisco, CA 94105'
 
